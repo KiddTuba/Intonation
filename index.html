@@ -5,31 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Demystifying Intonation</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* Hide scrollbar for cleaner look in tables */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         [v-cloak] { display: none; }
+        .tuner-tick { position: absolute; top: 0; bottom: 0; width: 1px; background-color: #cbd5e1; }
+        .tuner-tick.major { height: 100%; width: 2px; background-color: #94a3b8; }
+        .tuner-tick.minor { height: 50%; top: 25%; }
+        
+        /* Toggle Switch Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #3b82f6;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #3b82f6;
+        }
+        .toggle-checkbox {
+            right: 0;
+            z-index: 1;
+            border-color: #e2e8f0;
+            transition: all 0.3s;
+        }
+        .toggle-label {
+            width: 3rem;
+            height: 1.5rem;
+            background-color: #cbd5e1;
+            border-radius: 9999px;
+            transition: all 0.3s;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200">
 
     <!-- Navigation -->
-    <nav class="bg-slate-900 text-white shadow-md border-b border-slate-800">
+    <nav class="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
+            <div class="flex flex-wrap items-center justify-between h-auto py-3 md:py-0 md:h-16 gap-3">
                 <div class="flex items-center space-x-3">
                     <i data-lucide="music" class="w-6 h-6 text-blue-400"></i>
-                    <span class="font-bold text-xl tracking-tight">Demystifying Intonation</span>
+                    <span class="font-bold text-xl tracking-tight hidden sm:block">Demystifying Intonation</span>
                 </div>
-                <div class="flex space-x-1" id="nav-buttons">
+                <div class="flex flex-wrap space-x-1" id="nav-buttons">
                     <!-- Nav buttons rendered via JS -->
                 </div>
             </div>
@@ -44,11 +62,24 @@
             
             <!-- Settings Panel -->
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
-                    <i data-lucide="settings" class="w-5 h-5 mr-2 text-blue-500"></i>
-                    Passage & Chord Settings
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="settings-container">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                        <i data-lucide="settings" class="w-5 h-5 mr-2 text-blue-500"></i>
+                        Global Passage & Target Chord
+                    </h2>
+                    
+                    <!-- Auto-Detect Toggle -->
+                    <div class="flex items-center space-x-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                        <i data-lucide="wand-2" class="w-4 h-4 text-blue-600"></i>
+                        <span class="text-sm font-bold text-blue-800">Auto-Detect Chord</span>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in ml-2">
+                            <input type="checkbox" name="toggle" id="autoDetectToggle" onchange="toggleAutoDetect(this.checked)" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="autoDetectToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" id="settings-container">
                     <!-- Rendered via JS -->
                 </div>
             </div>
@@ -57,14 +88,20 @@
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold text-slate-800 flex items-center">
-                        <i data-lucide="music" class="w-5 h-5 mr-2 text-blue-500"></i>
-                        Ensemble Parts (Written Pitch)
+                        <i data-lucide="users" class="w-5 h-5 mr-2 text-blue-500"></i>
+                        Ensemble Roster (Max 200)
                     </h2>
-                    <button onclick="addPart()" class="flex items-center text-sm bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors font-medium">
-                        <i data-lucide="plus" class="w-4 h-4 mr-1"></i> Add Instrument
-                    </button>
+                    <div class="space-x-2 flex">
+                        <button onclick="sortParts()" class="flex items-center text-sm bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition-colors font-medium border border-slate-200">
+                            <i data-lucide="arrow-down-up" class="w-4 h-4 mr-1"></i> Score Order
+                        </button>
+                        <button onclick="addPart()" class="flex items-center text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-500 transition-colors font-medium shadow-sm">
+                            <i data-lucide="plus" class="w-4 h-4 mr-1"></i> Add Part
+                        </button>
+                    </div>
                 </div>
-                <div class="space-y-3" id="parts-container">
+                <!-- Dynamic Roster UI -->
+                <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar" id="parts-container">
                     <!-- Parts rendered via JS -->
                 </div>
             </div>
@@ -75,15 +112,16 @@
                     <!-- Header Rendered via JS -->
                 </div>
                 <div class="overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left border-collapse min-w-[800px]">
+                    <table class="w-full text-left border-collapse min-w-[1000px]">
                         <thead>
                             <tr class="bg-slate-800/50 text-slate-300 text-xs uppercase tracking-wider">
-                                <th class="p-4 font-medium">Instrument</th>
-                                <th class="p-4 font-medium">Written</th>
+                                <th class="p-4 font-medium">Player / Instrument</th>
+                                <th class="p-4 font-medium">Written Register</th>
+                                <th class="p-4 font-medium">Concert Pitch</th>
                                 <th class="p-4 font-medium">Chord Factor</th>
                                 <th class="p-4 font-medium">Cents Fix</th>
-                                <th class="p-4 font-medium w-1/4">Instrument Tendency</th>
-                                <th class="p-4 font-medium text-center border-x border-slate-700">Listen (vs Root)</th>
+                                <th class="p-4 font-medium w-1/4">Natural Tendency</th>
+                                <th class="p-4 font-medium text-center border-x border-slate-700">Listen vs Root</th>
                                 <th class="p-4 font-medium text-center">Score Mark</th>
                             </tr>
                         </thead>
@@ -91,6 +129,54 @@
                             <!-- Analysis rows rendered via JS -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Tuner Tab -->
+        <div id="tab-tuner" class="space-y-6 hidden">
+            <div class="bg-slate-900 p-8 rounded-xl shadow-lg border border-slate-800 text-center">
+                <div class="flex justify-center mb-6">
+                    <i data-lucide="mic" class="w-12 h-12 text-blue-500"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Live Harmonic Tuner</h2>
+                <p class="text-slate-400 max-w-xl mx-auto mb-8">
+                    Select your target chord, activate the microphone, and play. The tuner will detect your note, calculate its role in the chord, and show you exactly where to place the pitch to achieve pure Just Intonation.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto mb-8 bg-slate-800 p-4 rounded-lg text-left" id="tuner-settings-container">
+                    <!-- Rendered via JS to share settings with analyzer -->
+                </div>
+
+                <div class="mb-10 relative max-w-3xl mx-auto">
+                    <!-- Tuner Dial UI -->
+                    <div class="text-6xl font-bold text-white mb-2" id="tuner-note-display">--</div>
+                    <div class="text-lg text-slate-400 mb-6 font-mono" id="tuner-cents-display">Waiting for audio...</div>
+                    <div class="text-xl font-semibold text-blue-400 mb-8" id="tuner-factor-display"></div>
+
+                    <div class="relative w-full h-16 bg-slate-800 rounded-full overflow-hidden border border-slate-700 shadow-inner">
+                        <!-- Tick marks -->
+                        <div id="tuner-ticks" class="absolute inset-0 pointer-events-none"></div>
+                        <div class="absolute left-1/2 top-0 bottom-0 w-1 bg-slate-500 -translate-x-1/2 z-10"></div>
+                        <div id="tuner-target-zone" class="absolute top-0 bottom-0 w-4 bg-emerald-500/30 -translate-x-1/2 z-10 hidden border-x border-emerald-500/50"></div>
+                        <div id="tuner-needle" class="absolute left-1/2 top-0 bottom-0 w-2 bg-rose-500 rounded-full transition-all duration-75 -translate-x-1/2 z-20 shadow-[0_0_10px_rgba(225,29,72,0.8)] opacity-50"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500 font-mono mt-2 font-bold px-2">
+                        <span>-50</span>
+                        <span>-25</span>
+                        <span class="text-slate-400">ET</span>
+                        <span>+25</span>
+                        <span>+50</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-center space-x-4">
+                    <button onclick="toggleTuner()" id="tuner-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-colors flex items-center shadow-lg shadow-blue-900/50">
+                        <i data-lucide="mic" class="w-5 h-5 mr-2"></i> Start Tuner
+                    </button>
+                    <button onclick="playTunerDrone()" id="tuner-drone-btn" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center">
+                        <i data-lucide="volume-2" class="w-5 h-5 mr-2"></i> Play Chord Drone
+                    </button>
                 </div>
             </div>
         </div>
@@ -107,8 +193,8 @@
                     <h1 class="text-3xl font-bold mb-2">Demystifying Intonation</h1>
                     <p class="text-blue-100 text-lg">A Band Director's Guide to Playing in Tune, Every Note, Every Phrase.</p>
                 </div>
-
                 <div class="p-8 space-y-10 text-slate-700">
+                    
                     <section>
                         <h2 class="text-2xl font-bold text-slate-900 mb-4 flex items-center">
                             <i data-lucide="info" class="w-6 h-6 mr-2 text-blue-500"></i>
@@ -126,7 +212,7 @@
                             In reality, <strong>every interval has its problems</strong>, and <strong>every instrument has its built-in flaws</strong>. True ensemble intonation requires understanding the harmonic function of the note within a chord (Just Intonation) combined with knowledge of the physical tendencies of the instrument playing it.
                         </p>
                     </section>
-
+                
                     <section>
                         <h2 class="text-2xl font-bold text-slate-900 mb-4 flex items-center">
                             <i data-lucide="headphones" class="w-6 h-6 mr-2 text-blue-500"></i>
@@ -178,7 +264,7 @@
                             </table>
                         </div>
                     </section>
-
+                
                     <section>
                         <h2 class="text-2xl font-bold text-slate-900 mb-4 flex items-center">
                             <i data-lucide="wind" class="w-6 h-6 mr-2 text-blue-500"></i>
@@ -196,7 +282,7 @@
                             This is why performers must listen actively and continually adjust. Use the audio playback tools in the Analyzer Tab to let students hear these shifts in isolation, training their ears to lock into the beatless center of the chord.
                         </p>
                     </section>
-
+                
                     <section>
                         <h2 class="text-2xl font-bold text-slate-900 mb-4">Instrument Tendencies & Marking the Score</h2>
                         <p class="leading-relaxed mb-4">
@@ -215,9 +301,10 @@
                             </div>
                         </div>
                         <p class="leading-relaxed font-medium">
-                            <strong>Action Step:</strong> Input an ensemble passage into the Analyzer. Look at the "Score Mark (Fix)" column. Tell your students to grab their pencils, locate the chord, and draw that exact arrow over their note. Have them play the chord before adjusting, listen to the "beats," then implement the fix arrow to lock it in.
+                            <strong>Action Step:</strong> Input an ensemble passage into the Analyzer. Look at the "Score Mark" column. Tell your students to grab their pencils, locate the chord, and draw that exact arrow over their note. Have them play the chord before adjusting, listen to the "beats," then implement the fix arrow to lock it in.
                         </p>
                     </section>
+
                 </div>
             </div>
         </div>
@@ -227,102 +314,113 @@
     <script>
         // --- DATA & CONSTANTS ---
         const NOTES = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
-        const OCTAVES = [2, 3, 4, 5, 6];
+        const OCTAVES = [2, 3, 4, 5, 6, 7];
 
         const INSTRUMENTS = {
-            "Flute": { transposition: 0, clef: "treble", family: "woodwind" },
-            "Oboe": { transposition: 0, clef: "treble", family: "woodwind" },
-            "Bassoon": { transposition: 0, clef: "bass", family: "woodwind" },
-            "Clarinet in Bb": { transposition: -2, clef: "treble", family: "woodwind" },
-            "Bass Clarinet in Bb": { transposition: -14, clef: "treble", family: "woodwind" },
-            "Alto Saxophone": { transposition: -9, clef: "treble", family: "woodwind" },
-            "Tenor Saxophone": { transposition: -14, clef: "treble", family: "woodwind" },
-            "Baritone Saxophone": { transposition: -21, clef: "treble", family: "woodwind" },
-            "Trumpet in Bb": { transposition: -2, clef: "treble", family: "brass" },
-            "Horn in F": { transposition: -7, clef: "treble", family: "brass" },
-            "Trombone": { transposition: 0, clef: "bass", family: "brass" },
-            "Euphonium (BC)": { transposition: 0, clef: "bass", family: "brass" },
-            "Euphonium (TC)": { transposition: -14, clef: "treble", family: "brass" },
-            "Tuba": { transposition: 0, clef: "bass", family: "brass" },
-            "Mallets": { transposition: 0, clef: "treble", family: "percussion" }
+            "Piccolo": { trans: 12, clef: "treble", order: 10 },
+            "Flute": { trans: 0, clef: "treble", order: 20 },
+            "Oboe": { trans: 0, clef: "treble", order: 30 },
+            "Clarinet in Eb": { trans: 3, clef: "treble", order: 40 },
+            "Clarinet in Bb": { trans: -2, clef: "treble", order: 50 },
+            "Bass Clarinet in Bb": { trans: -14, clef: "treble", order: 60 },
+            "Bassoon": { trans: 0, clef: "bass", order: 70 },
+            "Soprano Sax (Bb)": { trans: -2, clef: "treble", order: 80 },
+            "Alto Sax (Eb)": { trans: -9, clef: "treble", order: 90 },
+            "Tenor Sax (Bb)": { trans: -14, clef: "treble", order: 100 },
+            "Bari Sax (Eb)": { trans: -21, clef: "treble", order: 110 },
+            "Horn in F": { trans: -7, clef: "treble", order: 120 },
+            "Horn in Bb (Trigger)": { trans: -7, clef: "treble", order: 125 },
+            "Trumpet": { trans: -2, clef: "treble", order: 130 },
+            "Trombone": { trans: 0, clef: "bass", order: 140 },
+            "Bass Trombone": { trans: 0, clef: "bass", order: 150 },
+            "Euphonium/Baritone (3v)": { trans: 0, clef: "bass", order: 160 },
+            "Euphonium/Baritone (4v)": { trans: 0, clef: "bass", order: 165 },
+            "Euphonium (TC)": { trans: -14, clef: "treble", order: 170 },
+            "Tuba (BBb)": { trans: 0, clef: "bass", order: 180 },
+            "Tuba (CC)": { trans: 0, clef: "bass", order: 181 },
+            "Tuba (Eb)": { trans: 0, clef: "bass", order: 182 },
+            "Tuba (F)": { trans: 0, clef: "bass", order: 183 },
+            "Mallets / Piano": { trans: 0, clef: "treble", order: 190 }
         };
 
         const INTERVAL_ADJUSTMENTS = {
             0: { name: "Root", cents: 0, mark: "-" },
-            1: { name: "Minor 2nd", cents: +12, mark: "↑" },
-            2: { name: "Major 2nd", cents: +4, mark: "↑" },
-            3: { name: "Minor 3rd", cents: +16, mark: "↑" },
+            1: { name: "Minor 2nd / b9", cents: +12, mark: "↑" },
+            2: { name: "Major 2nd / 9th", cents: +4, mark: "↑" },
+            3: { name: "Minor 3rd / #9", cents: +16, mark: "↑" },
             4: { name: "Major 3rd", cents: -14, mark: "↓" },
-            5: { name: "Perfect 4th", cents: -2, mark: "↓" },
-            6: { name: "Tritone", cents: -17, mark: "↓" }, 
+            5: { name: "Perfect 4th / 11th", cents: -2, mark: "↓" },
+            6: { name: "Tritone / #11", cents: -17, mark: "↓" }, 
             7: { name: "Perfect 5th", cents: +2, mark: "↑" },
-            8: { name: "Minor 6th", cents: +14, mark: "↑" },
-            9: { name: "Major 6th", cents: -16, mark: "↓" },
+            8: { name: "Minor 6th / b13", cents: +14, mark: "↑" },
+            9: { name: "Major 6th / 13th", cents: -16, mark: "↓" },
             10: { name: "Minor 7th (Dom)", cents: -31, mark: "↓↓" }, 
             11: { name: "Major 7th", cents: -12, mark: "↓" }
         };
 
         const CHORD_QUALITIES = {
-            "Major": { name: "Major" },
-            "Minor": { name: "Minor" },
-            "Dominant 7": { name: "Dominant 7" },
-            "Major 7": { name: "Major 7" },
-            "Minor 7": { name: "Minor 7" }, 
-            "Diminished": { name: "Diminished" },
-            "Augmented": { name: "Augmented" },
+            "Major": { intervals: [0, 4, 7] },
+            "Minor": { intervals: [0, 3, 7] },
+            "Diminished": { intervals: [0, 3, 6] },
+            "Augmented": { intervals: [0, 4, 8] },
+            "Dominant 7": { intervals: [0, 4, 7, 10] },
+            "Major 7": { intervals: [0, 4, 7, 11] },
+            "Minor 7": { intervals: [0, 3, 7, 10] }, 
+            "Half-Dim 7": { intervals: [0, 3, 6, 10] },
+            "Fully-Dim 7": { intervals: [0, 3, 6, 9] },
+            "Dom 7 (b9)": { intervals: [0, 4, 7, 10, 1] },
+            "Dom 7 (#9)": { intervals: [0, 4, 7, 10, 3] },
+            "Major 9": { intervals: [0, 4, 7, 11, 2] },
+            "Minor 9": { intervals: [0, 3, 7, 10, 2] },
+            "Dominant 9": { intervals: [0, 4, 7, 10, 2] },
+            "Dominant 11": { intervals: [0, 4, 7, 10, 2, 5] },
+            "Major 13": { intervals: [0, 4, 7, 11, 2, 9] },
+            "Dominant 13": { intervals: [0, 4, 7, 10, 2, 9] }
         };
 
         const INSTRUMENT_TENDENCIES = {
             "Flute": {
-                "C#5": { tendency: "Sharp", fix: "Roll head joint in (direct air down)" },
-                "C#6": { tendency: "Sharp", fix: "Roll head joint in (direct air down)" },
-                "E5": { tendency: "Flat", fix: "Roll head joint out (direct air across)" },
-                "F5": { tendency: "Flat", fix: "Roll head joint out (direct air across)" },
-                "F#5": { tendency: "Flat", fix: "Roll head joint out (direct air across)" },
-                "E6": { tendency: "Flat", fix: "Roll head joint out (direct air across)" },
-                "F6": { tendency: "Flat", fix: "Roll head joint out (direct air across)" },
-                "F#6": { tendency: "Flat", fix: "Roll head joint out (direct air across)" }
+                "C#5": { tendency: "Sharp", fix: "Roll head joint in" },
+                "C#6": { tendency: "Sharp", fix: "Roll head joint in" },
+                "E5": { tendency: "Flat", fix: "Roll head joint out" },
+                "F5": { tendency: "Flat", fix: "Roll head joint out" },
+                "E6": { tendency: "Flat", fix: "Roll head joint out" }
+            },
+            "Oboe": {
+                "F5": { tendency: "Sharp", fix: "Relax embouchure, drop jaw" },
+                "A5": { tendency: "Sharp", fix: "Relax embouchure, drop jaw" },
+                "Eb4": { tendency: "Flat", fix: "Support air, firm embouchure" }
             },
             "Clarinet in Bb": {
-                "G5": { tendency: "Sharp", fix: "Adjust middle joint / Lip up slightly" },
-                "G#5": { tendency: "Sharp", fix: "Lip down / open throat" },
-                "A5": { tendency: "Sharp", fix: "Lip down / open throat" },
-                "B4": { tendency: "Flat", fix: "Lip up / check bell adjustment" },
-                "C5": { tendency: "Flat", fix: "Lip up / check bell adjustment" }
+                "G4": { tendency: "Sharp", fix: "Throat tone: shade with right hand" },
+                "G#4": { tendency: "Sharp", fix: "Throat tone: shade with right hand" },
+                "A4": { tendency: "Sharp", fix: "Throat tone: shade with right hand" },
+                "B4": { tendency: "Flat", fix: "Lip up / check bell" },
+                "C5": { tendency: "Flat", fix: "Lip up / check bell" }
             },
-            "Alto Saxophone": {
+            "Alto Sax (Eb)": {
                 "C#5": { tendency: "Sharp", fix: "Lip down / drop jaw" },
-                "D5": { tendency: "Sharp", fix: "Lip down / drop jaw" },
-                "E6": { tendency: "Flat", fix: "Lip up / increase lower lip pressure" }
+                "D5": { tendency: "Sharp", fix: "Add low B key to vent" },
+                "E6": { tendency: "Flat", fix: "Increase lip pressure" }
             },
-            "Trumpet in Bb": {
+            "Trumpet": {
                 "C#4": { tendency: "Sharp", fix: "Extend 3rd valve slide" },
                 "D4": { tendency: "Sharp", fix: "Extend 3rd valve slide" },
-                "E4": { tendency: "Sharp", fix: "Use 1st valve slide thumb trigger / lip down" },
-                "F4": { tendency: "Sharp", fix: "Lip down" }
+                "E4": { tendency: "Sharp", fix: "Extend 1st valve slide / lip down" },
+                "A4": { tendency: "Sharp", fix: "Extend 1st valve slide" }
             },
             "Horn in F": {
-                "F5": { tendency: "Sharp", fix: "Adjust right hand in bell / decrease lip pressure" },
-                "G5": { tendency: "Sharp", fix: "Adjust right hand in bell / decrease lip pressure" },
-                "Db5": { tendency: "Flat", fix: "Increase lip pressure / hand adjustment" },
-                "Ab5": { tendency: "Flat", fix: "Increase lip pressure / hand adjustment" }
+                "F5": { tendency: "Sharp", fix: "Close right hand in bell" },
+                "G5": { tendency: "Sharp", fix: "Close right hand in bell" },
+                "Db5": { tendency: "Flat", fix: "Open right hand / increase pressure" }
             },
             "Trombone": {
-                "F3": { tendency: "Sharp (3rd Partial)", fix: "Move slide out slightly" },
-                "E3": { tendency: "Sharp (3rd Partial)", fix: "Move slide out slightly" },
-                "Eb3": { tendency: "Sharp (3rd Partial)", fix: "Move slide out slightly" },
-                "D3": { tendency: "Sharp (3rd Partial)", fix: "Move slide out slightly" },
-                "D4": { tendency: "Flat (5th Partial)", fix: "Move slide in slightly" },
-                "Db4": { tendency: "Flat (5th Partial)", fix: "Move slide in slightly" },
-                "C4": { tendency: "Flat (5th Partial)", fix: "Move slide in slightly" }
+                "F3": { tendency: "Sharp (3rd Par)", fix: "Move slide out past 1st pos" },
+                "D4": { tendency: "Flat (5th Par)", fix: "Move slide in (sharp 1st pos)" }
             },
-            "Tuba": {
-                "F2": { tendency: "Sharp (3rd Partial)", fix: "Lip down / alternate fingerings" },
-                "E2": { tendency: "Sharp (3rd Partial)", fix: "Lip down / alternate fingerings" },
-                "Eb2": { tendency: "Sharp (3rd Partial)", fix: "Lip down / alternate fingerings" },
-                "D3": { tendency: "Flat (5th Partial)", fix: "Lip up / increase pressure" },
-                "Db3": { tendency: "Flat (5th Partial)", fix: "Lip up / increase pressure" },
-                "C3": { tendency: "Flat (5th Partial)", fix: "Lip up / increase pressure" }
+            "Tuba (BBb)": {
+                "F2": { tendency: "Sharp (3rd Par)", fix: "Lip down / use valves 1-3" },
+                "D3": { tendency: "Flat (5th Par)", fix: "Lip up / increase pressure" }
             }
         };
 
@@ -331,135 +429,330 @@
             activeTab: 'analyzer',
             songName: "",
             measureNum: "",
-            chordRoot: "Bb",
-            chordQuality: "Major",
+            chordRoot: "C",
+            chordQuality: "Major 7",
+            autoDetect: true,
             isPlaying: false,
             parts: [
-                { id: 1, instrument: "Trumpet in Bb", note: "C", octave: "4" },
-                { id: 2, instrument: "Alto Saxophone", note: "G", octave: "5" },
-                { id: 3, instrument: "Flute", note: "D", octave: "6" }
+                { id: 1, playerName: "", instrument: "Trumpet", note: "D", octave: "4" }, // Concert C
+                { id: 2, playerName: "", instrument: "Alto Sax (Eb)", note: "B", octave: "4" }, // Concert D (9th)
+                { id: 3, playerName: "John", instrument: "Trombone", note: "E", octave: "3" }, // Concert E (M3)
+                { id: 4, playerName: "", instrument: "Clarinet in Bb", note: "A", octave: "4" }  // Concert G (P5)
             ]
         };
 
-        // --- AUDIO ENGINE ---
+        // --- AUDIO ENGINE (Synth & Tuner) ---
         let audioCtx = null;
-
         const initAudio = () => {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             return audioCtx;
         };
 
         const playFrequencies = (freqs, duration = 3.0) => {
             const ctx = initAudio();
-            
             freqs.forEach(freq => {
+                if(freq <= 0) return;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 
                 osc.type = 'sawtooth'; 
                 const filter = ctx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.value = 800; 
+                filter.frequency.value = 600; 
                 
                 osc.connect(filter);
                 filter.connect(gain);
                 gain.connect(ctx.destination);
                 
-                const volume = 0.2 / Math.max(1, freqs.length);
+                const volume = 0.15 / Math.max(1, freqs.length);
                 gain.gain.setValueAtTime(0, ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.3);
                 gain.gain.setValueAtTime(volume, ctx.currentTime + duration - 0.5);
                 gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
                 
                 osc.frequency.setValueAtTime(freq, ctx.currentTime);
-                
                 osc.start(ctx.currentTime);
                 osc.stop(ctx.currentTime + duration);
             });
         };
 
-        // --- HELPER FUNCTIONS ---
+        let tunerStream = null, tunerAnalyser = null, tunerLoopId = null, isTunerActive = false, tunerDroneOsc = [];
+
+        function toggleTuner() { if (isTunerActive) stopTuner(); else startTuner(); }
+        async function startTuner() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                tunerStream = stream; const ctx = initAudio(); tunerAnalyser = ctx.createAnalyser(); tunerAnalyser.fftSize = 4096;
+                const source = ctx.createMediaStreamSource(stream); source.connect(tunerAnalyser); isTunerActive = true;
+                
+                document.getElementById('tuner-btn').innerHTML = '<i data-lucide="mic-off" class="w-5 h-5 mr-2"></i> Stop Tuner';
+                document.getElementById('tuner-btn').classList.replace('bg-blue-600', 'bg-red-600');
+                document.getElementById('tuner-btn').classList.replace('hover:bg-blue-500', 'hover:bg-red-500');
+                document.getElementById('tuner-needle').classList.replace('opacity-50', 'opacity-100');
+                lucide.createIcons(); updateTunerLoop();
+            } catch(e) { alert("Microphone access denied or error: " + e.message); }
+        }
+        function stopTuner() {
+            if (tunerStream) tunerStream.getTracks().forEach(t => t.stop());
+            if (tunerLoopId) cancelAnimationFrame(tunerLoopId); isTunerActive = false;
+            
+            document.getElementById('tuner-btn').innerHTML = '<i data-lucide="mic" class="w-5 h-5 mr-2"></i> Start Tuner';
+            document.getElementById('tuner-btn').classList.replace('bg-red-600', 'bg-blue-600');
+            document.getElementById('tuner-btn').classList.replace('hover:bg-red-500', 'hover:bg-blue-500');
+            document.getElementById('tuner-needle').classList.replace('opacity-100', 'opacity-50');
+            document.getElementById('tuner-needle').style.transform = `translateX(-50%) left: 50%`;
+            document.getElementById('tuner-cents-display').innerText = "Waiting for audio...";
+            lucide.createIcons(); stopTunerDrone();
+        }
+        function playTunerDrone() {
+            if(tunerDroneOsc.length > 0) { stopTunerDrone(); return; }
+            const ctx = initAudio(); const rootMidi = 48 + getNoteIndex(state.chordRoot);
+            const intervals = CHORD_QUALITIES[state.chordQuality].intervals;
+            const freqs = intervals.map(inter => {
+                const adj = INTERVAL_ADJUSTMENTS[inter].cents; const midiET = rootMidi + inter;
+                const freqET = 440 * Math.pow(2, (midiET - 69) / 12); return freqET * Math.pow(2, adj / 1200);
+            });
+            tunerDroneOsc = freqs.map(freq => {
+                const osc = ctx.createOscillator(), gain = ctx.createGain(); osc.type = 'triangle';
+                const volume = 0.1 / freqs.length; gain.gain.value = volume;
+                osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = freq; osc.start(); return {osc, gain};
+            });
+            document.getElementById('tuner-drone-btn').innerHTML = '<i data-lucide="volume-x" class="w-5 h-5 mr-2"></i> Stop Drone';
+            document.getElementById('tuner-drone-btn').classList.replace('bg-slate-700', 'bg-amber-600'); lucide.createIcons();
+        }
+        function stopTunerDrone() {
+            tunerDroneOsc.forEach(n => { n.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5); setTimeout(() => n.osc.stop(), 500); });
+            tunerDroneOsc = [];
+            document.getElementById('tuner-drone-btn').innerHTML = '<i data-lucide="volume-2" class="w-5 h-5 mr-2"></i> Play Chord Drone';
+            document.getElementById('tuner-drone-btn').classList.replace('bg-amber-600', 'bg-slate-700'); lucide.createIcons();
+        }
+        function autoCorrelate(buf, sampleRate) {
+            let SIZE = buf.length, rms = 0; for (let i=0;i<SIZE;i++) rms += buf[i]*buf[i]; rms = Math.sqrt(rms/SIZE); if (rms < 0.01) return -1;
+            let r1=0, r2=SIZE-1, thres=0.2; for (let i=0; i<SIZE/2; i++) if (Math.abs(buf[i])<thres) { r1=i; break; } for (let i=1; i<SIZE/2; i++) if (Math.abs(buf[SIZE-i])<thres) { r2=SIZE-i; break; }
+            buf = buf.slice(r1,r2); SIZE = buf.length; let c = new Array(SIZE).fill(0);
+            for (let i=0; i<SIZE; i++) for (let j=0; j<SIZE-i; j++) c[i] = c[i] + buf[j]*buf[j+i];
+            let d=0; while (c[d]>c[d+1]) d++; let maxval=-1, maxpos=-1; for (let i=d; i<SIZE; i++) { if (c[i] > maxval) { maxval = c[i]; maxpos = i; } }
+            let T0 = maxpos, x1=c[T0-1], x2=c[T0], x3=c[T0+1], a = (x1 + x3 - 2*x2)/2, b = (x3 - x1)/2; if (a) T0 = T0 - b/(2*a);
+            return sampleRate/T0;
+        }
+        function updateTunerLoop() {
+            if (!isTunerActive) return;
+            const buf = new Float32Array(tunerAnalyser.fftSize); tunerAnalyser.getFloatTimeDomainData(buf);
+            const freq = autoCorrelate(buf, audioCtx.sampleRate);
+            if (freq !== -1) {
+                const noteNum = 12 * (Math.log(freq / 440) / Math.log(2)) + 69; const roundedNote = Math.round(noteNum);
+                const noteName = NOTES[roundedNote % 12]; const octave = Math.floor(roundedNote / 12) - 1; const centsET = Math.floor((noteNum - roundedNote) * 100);
+                document.getElementById('tuner-note-display').innerText = `${noteName}${octave}`;
+                const interval = getInterval(state.chordRoot, noteName); const chordIntervals = CHORD_QUALITIES[state.chordQuality].intervals; const targetZone = document.getElementById('tuner-target-zone');
+                if (chordIntervals.includes(interval)) {
+                    const adjustment = INTERVAL_ADJUSTMENTS[interval];
+                    document.getElementById('tuner-factor-display').innerText = `Harmonic Role: ${adjustment.name} (Target: ${adjustment.cents > 0 ? '+':''}${adjustment.cents} cents)`;
+                    document.getElementById('tuner-factor-display').className = "text-xl font-semibold text-emerald-400 mb-8";
+                    targetZone.classList.remove('hidden'); const targetLeft = ((adjustment.cents + 50) / 100) * 100; targetZone.style.left = `${Math.max(2, Math.min(98, targetLeft))}%`;
+                    const diffJI = Math.abs(centsET - adjustment.cents);
+                    if (diffJI < 4) {
+                        document.getElementById('tuner-needle').classList.replace('bg-rose-500', 'bg-emerald-400'); document.getElementById('tuner-needle').classList.replace('shadow-[0_0_10px_rgba(225,29,72,0.8)]', 'shadow-[0_0_15px_rgba(52,211,153,0.9)]');
+                        document.getElementById('tuner-cents-display').innerText = `LOCKED IN: ${centsET > 0 ? '+':''}${centsET}c`; document.getElementById('tuner-cents-display').classList.add('text-emerald-400');
+                    } else {
+                        document.getElementById('tuner-needle').classList.replace('bg-emerald-400', 'bg-rose-500'); document.getElementById('tuner-needle').classList.replace('shadow-[0_0_15px_rgba(52,211,153,0.9)]', 'shadow-[0_0_10px_rgba(225,29,72,0.8)]');
+                        document.getElementById('tuner-cents-display').innerText = `${centsET > 0 ? '+':''}${centsET}c (ET)`; document.getElementById('tuner-cents-display').classList.remove('text-emerald-400');
+                    }
+                } else {
+                    document.getElementById('tuner-factor-display').innerText = "Non-Chord Tone"; document.getElementById('tuner-factor-display').className = "text-xl font-semibold text-amber-400 mb-8";
+                    targetZone.classList.add('hidden'); document.getElementById('tuner-needle').classList.replace('bg-emerald-400', 'bg-rose-500'); document.getElementById('tuner-needle').classList.replace('shadow-[0_0_15px_rgba(52,211,153,0.9)]', 'shadow-[0_0_10px_rgba(225,29,72,0.8)]'); document.getElementById('tuner-cents-display').innerText = `${centsET > 0 ? '+':''}${centsET}c (ET)`;
+                }
+                const needleLeft = ((centsET + 50) / 100) * 100; document.getElementById('tuner-needle').style.left = `${Math.max(0, Math.min(100, needleLeft))}%`;
+            }
+            tunerLoopId = requestAnimationFrame(updateTunerLoop);
+        }
+
+        // --- CORE HELPER FUNCTIONS ---
         const getNoteIndex = (noteName) => {
             const map = { "Db": "C#", "D#": "Eb", "Gb": "F#", "G#": "Ab", "A#": "Bb" };
-            const normalized = map[noteName] || noteName;
-            return NOTES.indexOf(normalized);
+            return NOTES.indexOf(map[noteName] || noteName);
         };
 
         const getInterval = (rootNote, targetNote) => {
-            const rootIdx = getNoteIndex(rootNote);
-            const targetIdx = getNoteIndex(targetNote);
-            let interval = (targetIdx - rootIdx) % 12;
-            if (interval < 0) interval += 12;
-            return interval;
+            const r = getNoteIndex(rootNote); const t = getNoteIndex(targetNote);
+            return r === -1 || t === -1 ? 0 : (t - r + 12) % 12;
+        };
+
+        const getRegisterName = (instrument, noteName, octaveStr) => {
+            const midi = (parseInt(octaveStr) + 1) * 12 + getNoteIndex(noteName);
+            if (instrument.includes("Clarinet")) {
+                if (midi <= 66) return "Chalumeau";
+                if (midi >= 67 && midi <= 70) return "Throat Tones";
+                if (midi >= 71 && midi <= 84) return "Clarion";
+                return "Altissimo";
+            }
+            if (instrument.includes("Sax")) {
+                if (midi <= 61) return "Low Reg.";
+                if (midi >= 62 && midi <= 73) return "Mid Reg.";
+                if (midi >= 74 && midi <= 84) return "High Reg.";
+                return "Altissimo";
+            }
+            if (instrument === "Flute" || instrument === "Piccolo" || instrument === "Oboe") {
+                if (midi <= 72) return "Low Reg.";
+                if (midi >= 73 && midi <= 84) return "Mid Reg.";
+                return "High Reg.";
+            }
+            if (instrument.includes("Trumpet") || instrument.includes("Horn")) {
+                if (midi <= 60) return "Low Reg.";
+                if (midi >= 61 && midi <= 72) return "Mid (Staff)";
+                if (midi >= 73 && midi <= 79) return "High Reg.";
+                return "Extreme High";
+            }
+            if (instrument === "Tuba (BBb)" || instrument.includes("Tuba")) {
+                if (midi <= 31) return "Pedal";
+                if (midi >= 32 && midi <= 41) return "Low Reg.";
+                if (midi >= 42 && midi <= 48) return "Mid Reg.";
+                return "High Reg.";
+            }
+            if (instrument.includes("Trombone") || instrument.includes("Euphonium") || instrument.includes("Bassoon")) {
+                if (midi <= 43) return "Low / Pedal";
+                if (midi >= 44 && midi <= 53) return "Mid-Low";
+                if (midi >= 54 && midi <= 62) return "Mid-High";
+                return "High Reg.";
+            }
+            return "Standard";
         };
 
         const analyzePart = (part, chordRoot) => {
-            const trans = INSTRUMENTS[part.instrument]?.transposition || 0;
+            const trans = INSTRUMENTS[part.instrument]?.trans || 0;
             const writtenMidi = (parseInt(part.octave) + 1) * 12 + getNoteIndex(part.note);
             const concertMidi = writtenMidi + trans;
-            
-            const concertNoteIdx = concertMidi % 12;
-            const concertNote = NOTES[concertNoteIdx];
+            const concertNote = NOTES[concertMidi % 12];
             
             const interval = getInterval(chordRoot, concertNote);
-            const adjustment = INTERVAL_ADJUSTMENTS[interval] || { name: "Non-chord tone", cents: 0, mark: "-" };
+            const chordIntervals = CHORD_QUALITIES[state.chordQuality].intervals;
+            
+            let adjustment = { name: "Non-Chord Tone", cents: 0, mark: "-" };
+            if (chordIntervals.includes(interval)) adjustment = INTERVAL_ADJUSTMENTS[interval];
             
             const freqET = 440 * Math.pow(2, (concertMidi - 69) / 12);
             const freqJI = freqET * Math.pow(2, adjustment.cents / 1200);
             
             const noteOctaveStr = `${part.note}${part.octave}`;
             const tendencyData = INSTRUMENT_TENDENCIES[part.instrument]?.[noteOctaveStr];
+            const registerName = getRegisterName(part.instrument, part.note, part.octave);
             
-            return { ...part, concertNote, interval, adjustment, freqET, freqJI, tendencyData };
+            return { ...part, concertNote, interval, adjustment, freqET, freqJI, tendencyData, registerName };
         };
 
         const getSavedPassages = () => JSON.parse(localStorage.getItem('savedPassages') || '[]');
 
-        // --- RENDER LOGIC ---
+        const autoDetectChord = () => {
+            if (!state.autoDetect || state.parts.length === 0) return;
+
+            // Get unique Concert Pitch Classes
+            const uniquePCs = [...new Set(state.parts.map(p => {
+                const trans = INSTRUMENTS[p.instrument]?.trans || 0;
+                const writtenMidi = (parseInt(p.octave) + 1) * 12 + getNoteIndex(p.note);
+                return (writtenMidi + trans) % 12;
+            }))];
+
+            // Find bass note (lowest pitch)
+            let lowestMidi = 999;
+            let bassPC = 0;
+            state.parts.forEach(p => {
+                const trans = INSTRUMENTS[p.instrument]?.trans || 0;
+                const writtenMidi = (parseInt(p.octave) + 1) * 12 + getNoteIndex(p.note);
+                const concertMidi = writtenMidi + trans;
+                if (concertMidi < lowestMidi) {
+                    lowestMidi = concertMidi;
+                    bassPC = concertMidi % 12;
+                }
+            });
+
+            let bestScore = -999;
+            let bestRoot = 0;
+            let bestQuality = "Major";
+
+            // Score every possible root and quality combination
+            for (let root = 0; root < 12; root++) {
+                for (const [quality, data] of Object.entries(CHORD_QUALITIES)) {
+                    const targetPCs = data.intervals.map(i => (root + i) % 12);
+                    let score = 0;
+
+                    // Reward matching notes, penalize non-chord tones
+                    uniquePCs.forEach(pc => {
+                        if (targetPCs.includes(pc)) score += 2;
+                        else score -= 1.5; 
+                    });
+
+                    // Penalize missing notes of the chord (prevents 13th chords from winning over pure triads)
+                    targetPCs.forEach(tpc => {
+                        if (!uniquePCs.includes(tpc)) score -= 0.5;
+                    });
+
+                    // Bonus for root position or standard inversions
+                    if (bassPC === root) score += 1.5; // Root pos
+                    else if (bassPC === (root + data.intervals[1]) % 12) score += 0.5; // 1st Inv
+
+                    // Tie breaker: prefer simpler chords
+                    score -= targetPCs.length * 0.1;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestRoot = root;
+                        bestQuality = quality;
+                    }
+                }
+            }
+
+            // Update if changed
+            if (state.chordRoot !== NOTES[bestRoot] || state.chordQuality !== bestQuality) {
+                state.chordRoot = NOTES[bestRoot];
+                state.chordQuality = bestQuality;
+                renderSettings();
+                syncTunerSettings();
+            }
+        };
+
+
+        // --- UI RENDER LOGIC ---
         
         function renderNav() {
             const tabs = [
-                { id: 'analyzer', label: 'Chord Analyzer' },
+                { id: 'analyzer', label: 'Score Analyzer' },
+                { id: 'tuner', label: 'Live Tuner' },
                 { id: 'saved', label: 'Saved Passages' },
                 { id: 'guide', label: 'Educational Guide' }
             ];
-            
             const navHtml = tabs.map(tab => `
-                <button 
-                    onclick="setTab('${tab.id}')"
-                    class="px-3 py-2 rounded-md text-sm font-medium transition-colors ${state.activeTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
-                >
+                <button onclick="setTab('${tab.id}')" class="px-3 py-2 rounded-md text-sm font-medium transition-colors ${state.activeTab === tab.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}">
                     ${tab.label}
                 </button>
             `).join('');
-            
             document.getElementById('nav-buttons').innerHTML = navHtml;
         }
 
         function renderSettings() {
+            // Update Toggle Switch visually
+            document.getElementById('autoDetectToggle').checked = state.autoDetect;
+            const selectClass = state.autoDetect 
+                ? "w-full p-2 border border-slate-300 rounded-lg outline-none font-bold text-slate-400 bg-slate-100 cursor-not-allowed" 
+                : "w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-700 bg-blue-50 cursor-pointer";
+
             const settingsHtml = `
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">Song / Piece Name</label>
-                    <input type="text" value="${state.songName}" oninput="updateState('songName', this.value)" placeholder="e.g. First Suite in Eb" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"/>
+                    <input type="text" value="${state.songName}" oninput="updateState('songName', this.value)" placeholder="e.g. First Suite in Eb" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"/>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">Measure Number</label>
-                    <input type="text" value="${state.measureNum}" oninput="updateState('measureNum', this.value)" placeholder="e.g. 45" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"/>
+                    <input type="text" value="${state.measureNum}" oninput="updateState('measureNum', this.value)" placeholder="e.g. 45" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"/>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">Concert Chord Root</label>
-                    <select onchange="updateState('chordRoot', this.value); renderAnalysis();" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <select onchange="manualChordOverride('chordRoot', this.value)" ${state.autoDetect ? 'disabled title="Turn off Auto-Detect to change"' : ''} class="${selectClass}">
                         ${NOTES.map(n => `<option value="${n}" ${state.chordRoot === n ? 'selected' : ''}>${n}</option>`).join('')}
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">Chord Quality</label>
-                    <select onchange="updateState('chordQuality', this.value); renderAnalysis();" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <select onchange="manualChordOverride('chordQuality', this.value)" ${state.autoDetect ? 'disabled title="Turn off Auto-Detect to change"' : ''} class="${selectClass}">
                         ${Object.keys(CHORD_QUALITIES).map(q => `<option value="${q}" ${state.chordQuality === q ? 'selected' : ''}>${q}</option>`).join('')}
                     </select>
                 </div>
@@ -467,30 +760,67 @@
             document.getElementById('settings-container').innerHTML = settingsHtml;
         }
 
-        function renderParts() {
-            const partsHtml = state.parts.map((part, idx) => `
-                <div class="flex flex-wrap md:flex-nowrap items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <span class="font-bold text-slate-400 w-6">${idx + 1}.</span>
-                    <div class="flex-1 min-w-[200px]">
-                        <select onchange="updatePart(${part.id}, 'instrument', this.value)" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm">
-                            ${Object.keys(INSTRUMENTS).map(inst => `<option value="${inst}" ${part.instrument === inst ? 'selected' : ''}>${inst}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="w-24">
-                        <select onchange="updatePart(${part.id}, 'note', this.value)" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm">
-                            ${NOTES.map(n => `<option value="${n}" ${part.note === n ? 'selected' : ''}>${n}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="w-24">
-                        <select onchange="updatePart(${part.id}, 'octave', this.value)" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm">
-                            ${OCTAVES.map(o => `<option value="${o}" ${part.octave == o ? 'selected' : ''}>Octave ${o}</option>`).join('')}
-                        </select>
-                    </div>
-                    <button onclick="removePart(${part.id})" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Remove part">
-                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                    </button>
+        function syncTunerSettings() {
+            const tunerSettingsHtml = `
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Concert Chord Root</label>
+                    <select onchange="manualChordOverride('chordRoot', this.value)" class="w-full p-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-white bg-slate-700">
+                        ${NOTES.map(n => `<option value="${n}" ${state.chordRoot === n ? 'selected' : ''}>${n}</option>`).join('')}
+                    </select>
                 </div>
-            `).join('');
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Chord Quality</label>
+                    <select onchange="manualChordOverride('chordQuality', this.value)" class="w-full p-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-white bg-slate-700">
+                        ${Object.keys(CHORD_QUALITIES).map(q => `<option value="${q}" ${state.chordQuality === q ? 'selected' : ''}>${q}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+            document.getElementById('tuner-settings-container').innerHTML = tunerSettingsHtml;
+        }
+
+        function buildTunerTicks() {
+            const ticksContainer = document.getElementById('tuner-ticks');
+            let ticks = '';
+            for(let i=0; i<=100; i+=5) {
+                let isMajor = (i % 25 === 0);
+                ticks += `<div class="tuner-tick ${isMajor ? 'major' : 'minor'}" style="left: ${i}%"></div>`;
+            }
+            ticksContainer.innerHTML = ticks;
+        }
+
+        function renderParts() {
+            const partsHtml = state.parts.map((part, idx) => {
+                const register = getRegisterName(part.instrument, part.note, part.octave);
+                return `
+                    <div class="flex flex-wrap lg:flex-nowrap items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200 hover:bg-white transition-colors">
+                        <span class="font-bold text-slate-400 w-6 text-center text-sm">${idx + 1}.</span>
+                        
+                        <input type="text" placeholder="Player Name" value="${part.playerName}" onchange="updatePart(${part.id}, 'playerName', this.value)" class="w-full lg:w-32 p-2 border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500" />
+                        
+                        <div class="flex-1 min-w-[180px]">
+                            <select onchange="updatePart(${part.id}, 'instrument', this.value)" class="w-full p-2 border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 font-medium text-slate-700">
+                                ${Object.keys(INSTRUMENTS).map(inst => `<option value="${inst}" ${part.instrument === inst ? 'selected' : ''}>${inst}</option>`).join('')}
+                            </select>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-md border border-slate-200">
+                            <select onchange="updatePart(${part.id}, 'note', this.value)" class="w-16 p-1.5 border border-slate-300 rounded bg-white text-sm outline-none focus:border-blue-500 font-bold">
+                                ${NOTES.map(n => `<option value="${n}" ${part.note === n ? 'selected' : ''}>${n}</option>`).join('')}
+                            </select>
+                            <select onchange="updatePart(${part.id}, 'octave', this.value)" class="w-16 p-1.5 border border-slate-300 rounded bg-white text-sm outline-none focus:border-blue-500 font-bold">
+                                ${OCTAVES.map(o => `<option value="${o}" ${part.octave == o ? 'selected' : ''}>${o}</option>`).join('')}
+                            </select>
+                            <div class="px-2 py-1 w-28 text-center text-[10px] uppercase font-bold tracking-wider rounded ${register === 'Chalumeau' || register === 'Pedal' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">
+                                ${register}
+                            </div>
+                        </div>
+                        
+                        <button onclick="removePart(${part.id})" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors ml-auto lg:ml-0" title="Remove part">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
             document.getElementById('parts-container').innerHTML = partsHtml;
             lucide.createIcons();
         }
@@ -498,44 +828,42 @@
         function renderAnalysis() {
             const analyzedParts = state.parts.map(p => analyzePart(p, state.chordRoot));
             
-            // Render Header
             const headerHtml = `
                 <div>
-                    <h2 class="text-2xl font-bold text-white mb-1">Intonation Analysis</h2>
+                    <h2 class="text-2xl font-bold text-white mb-1">Harmonic Analysis</h2>
                     <p class="text-slate-400 text-sm">
-                        Target Chord: <span class="font-semibold text-blue-400">${state.chordRoot} ${state.chordQuality}</span> 
-                        ${state.songName ? ` | ${state.songName}` : ''} ${state.measureNum ? ` (m. ${state.measureNum})` : ''}
+                        Target Chord: <span class="font-semibold text-blue-400 text-base">${state.chordRoot} ${state.chordQuality}</span> 
+                        ${state.songName ? ` | <span class="text-slate-300">${state.songName}</span>` : ''} ${state.measureNum ? ` (m. ${state.measureNum})` : ''}
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
-                    <button onclick="handlePlayChord('ET')" ${state.isPlaying ? 'disabled' : ''} class="flex items-center px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg transition-colors font-medium text-sm disabled:opacity-50" title="Hear the out-of-tune interference beats">
-                        <i data-lucide="volume-2" class="w-4 h-4 mr-2 text-amber-400"></i> ET Chord (Clash)
+                    <button onclick="handlePlayChord('ET')" ${state.isPlaying ? 'disabled' : ''} class="flex items-center px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg transition-colors font-bold text-sm disabled:opacity-50" title="Hear out-of-tune Equal Temperament">
+                        <i data-lucide="volume-2" class="w-4 h-4 mr-2 text-amber-400"></i> Equal Temperament
                     </button>
-                    <button onclick="handlePlayChord('JI')" ${state.isPlaying ? 'disabled' : ''} class="flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-medium text-sm disabled:opacity-50" title="Hear the perfectly tuned resonant chord">
-                        <i data-lucide="play" class="w-4 h-4 mr-2"></i> JI Chord (Tuned)
+                    <button onclick="handlePlayChord('JI')" ${state.isPlaying ? 'disabled' : ''} class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-bold text-sm disabled:opacity-50" title="Hear resonant Just Intonation">
+                        <i data-lucide="play" class="w-4 h-4 mr-2"></i> Just Intonation
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
-                    <button onclick="savePassage()" class="flex items-center px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-medium text-sm shadow-sm">
+                    <button onclick="savePassage()" class="flex items-center px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-bold text-sm shadow-sm">
                         <i data-lucide="save" class="w-4 h-4 mr-2"></i> Save Form
                     </button>
                 </div>
             `;
             document.getElementById('analysis-header').innerHTML = headerHtml;
 
-            // Render Table
             const tbodyHtml = analyzedParts.map(part => {
                 let centsColor = "text-slate-300";
                 if (part.adjustment.cents < -10) centsColor = "text-blue-400";
                 if (part.adjustment.cents > 10) centsColor = "text-amber-400";
                 
-                let tendencyHtml = `<span class="text-slate-600 text-sm italic">Standard</span>`;
+                let tendencyHtml = `<span class="text-slate-600 text-sm italic">-</span>`;
                 if (part.tendencyData) {
                     const isSharp = part.tendencyData.tendency.includes('Sharp');
                     tendencyHtml = `
                         <div class="flex items-start max-w-[220px]">
                             <i data-lucide="alert-circle" class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 ${isSharp ? 'text-amber-400' : 'text-blue-400'}"></i>
                             <div class="text-sm">
-                                <span class="font-semibold block">${part.tendencyData.tendency}</span>
+                                <span class="font-semibold block text-slate-300">${part.tendencyData.tendency}</span>
                                 <span class="text-slate-400 text-xs">${part.tendencyData.fix}</span>
                             </div>
                         </div>
@@ -543,33 +871,37 @@
                 }
 
                 let markHtml = `<span class="text-slate-500">-</span>`;
-                if (part.adjustment.mark === "↑") markHtml = `<i data-lucide="arrow-up" class="w-5 h-5 text-amber-400" title="Fix UP"></i>`;
-                if (part.adjustment.mark === "↓") markHtml = `<i data-lucide="arrow-down" class="w-5 h-5 text-blue-400" title="Fix DOWN"></i>`;
-                if (part.adjustment.mark === "↓↓") markHtml = `<div class="flex flex-col -space-y-2"><i data-lucide="arrow-down" class="w-4 h-4 text-blue-400"></i><i data-lucide="arrow-down" class="w-4 h-4 text-blue-400"></i></div>`;
+                if (part.adjustment.mark === "↑") markHtml = `<i data-lucide="arrow-up" class="w-6 h-6 text-amber-400" title="Fix UP"></i>`;
+                if (part.adjustment.mark === "↓") markHtml = `<i data-lucide="arrow-down" class="w-6 h-6 text-blue-400" title="Fix DOWN"></i>`;
+                if (part.adjustment.mark === "↓↓") markHtml = `<div class="flex flex-col -space-y-3"><i data-lucide="arrow-down" class="w-5 h-5 text-blue-400"></i><i data-lucide="arrow-down" class="w-5 h-5 text-blue-400"></i></div>`;
+
+                const displayName = part.playerName ? `<span class="text-blue-300 font-bold">${part.playerName}</span> <span class="text-slate-400 text-xs block">${part.instrument}</span>` : `<span class="text-white font-medium block">${part.instrument}</span>`;
 
                 return `
-                    <tr class="hover:bg-slate-800/30 transition-colors">
-                        <td class="p-4 font-medium text-white">${part.instrument}</td>
+                    <tr class="hover:bg-slate-800/50 transition-colors border-b border-slate-800/50 last:border-0">
+                        <td class="p-4 leading-tight">${displayName}</td>
                         <td class="p-4">
-                            <span class="inline-block px-2 py-1 bg-slate-800 rounded text-sm border border-slate-700">
-                                ${part.note}${part.octave} <span class="text-slate-400 ml-1">(${part.concertNote})</span>
+                            <span class="inline-block px-2 py-1 bg-slate-800 rounded font-mono text-sm border border-slate-700 shadow-inner mb-1 block w-max">
+                                ${part.note}${part.octave} 
                             </span>
+                            <span class="text-xs uppercase font-bold tracking-wider text-slate-400 bg-slate-800/50 px-1.5 py-0.5 rounded border border-slate-700 w-max block">${part.registerName}</span>
                         </td>
-                        <td class="p-4 text-slate-300">${part.adjustment.name}</td>
-                        <td class="p-4 font-bold ${centsColor}">${part.adjustment.cents > 0 ? '+' : ''}${part.adjustment.cents}</td>
+                        <td class="p-4"><span class="font-bold text-emerald-400 font-mono text-lg">${part.concertNote}</span></td>
+                        <td class="p-4 text-slate-200 font-bold">${part.adjustment.name}</td>
+                        <td class="p-4 font-bold ${centsColor} text-lg">${part.adjustment.cents > 0 ? '+' : ''}${part.adjustment.cents}</td>
                         <td class="p-4">${tendencyHtml}</td>
                         <td class="p-4 text-center border-x border-slate-700">
-                            <div class="flex justify-center space-x-2">
-                                <button onclick="handlePlayInterval(${part.id}, 'ET')" ${state.isPlaying ? 'disabled' : ''} class="p-2 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 transition-colors disabled:opacity-50" title="Hear Equal Temperament (clash)">
-                                    <i data-lucide="volume-2" class="w-4 h-4"></i>
+                            <div class="flex flex-col space-y-2 items-center">
+                                <button onclick="handlePlayInterval(${part.id}, 'ET')" ${state.isPlaying ? 'disabled' : ''} class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 transition-all disabled:opacity-50 text-[10px] font-bold uppercase tracking-wider w-full flex justify-center items-center" title="Hear Equal Temperament (clash)">
+                                    <i data-lucide="volume-2" class="w-3 h-3 mr-1"></i> ET
                                 </button>
-                                <button onclick="handlePlayInterval(${part.id}, 'JI')" ${state.isPlaying ? 'disabled' : ''} class="p-2 rounded bg-slate-800 hover:bg-slate-700 text-blue-400 transition-colors disabled:opacity-50" title="Hear Just Intonation (adjusted fix)">
-                                    <i data-lucide="play" class="w-4 h-4"></i>
+                                <button onclick="handlePlayInterval(${part.id}, 'JI')" ${state.isPlaying ? 'disabled' : ''} class="px-2 py-1 rounded bg-blue-900/40 hover:bg-blue-800 text-blue-400 transition-all disabled:opacity-50 border border-blue-700/50 text-[10px] font-bold uppercase tracking-wider w-full flex justify-center items-center" title="Hear Just Intonation (adjusted fix)">
+                                    <i data-lucide="play" class="w-3 h-3 mr-1"></i> JI
                                 </button>
                             </div>
                         </td>
                         <td class="p-4 text-center">
-                            <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-bold text-lg">
+                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 border-2 border-slate-700 shadow-inner">
                                 ${markHtml}
                             </div>
                         </td>
@@ -608,44 +940,45 @@
                 </h2>
             `;
 
-            const gridHtml = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">` + passages.map(p => {
+            const gridHtml = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">` + passages.map(p => {
                 const partsListHtml = p.parts.map(part => {
                     const analyzed = analyzePart(part, p.chordRoot);
+                    const nameDisp = part.playerName ? `<span class="font-bold mr-1 text-blue-700">${part.playerName}</span>` : '';
                     return `
-                        <li class="text-sm flex justify-between items-center p-2 bg-slate-50 rounded">
-                            <span class="font-medium text-slate-700">${part.instrument}</span>
-                            <div class="flex items-center space-x-3">
-                                <span class="text-slate-400 text-xs">${analyzed.adjustment.name}</span>
-                                <span class="bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600 font-mono">${part.note}${part.octave}</span>
+                        <li class="text-sm flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100">
+                            <span class="text-slate-700 truncate w-1/2">${nameDisp}${part.instrument}</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">${analyzed.adjustment.name.split(' ')[0]}</span>
+                                <span class="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600 font-mono font-bold">${part.note}${part.octave}</span>
                             </div>
                         </li>
                     `;
                 }).join('');
 
                 return `
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                         <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-lg text-slate-800">${p.songName}</h3>
-                                <p class="text-sm text-slate-500 font-medium">Measure ${p.measureNum} • ${p.chordRoot} ${p.chordQuality}</p>
+                            <div class="pr-2">
+                                <h3 class="font-bold text-lg text-slate-800 leading-tight">${p.songName}</h3>
+                                <p class="text-sm text-blue-600 font-bold mt-1">m. ${p.measureNum} • ${p.chordRoot} ${p.chordQuality}</p>
                             </div>
-                            <button onclick="deletePassage(${p.id})" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Delete passage">
-                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            <button onclick="deletePassage(${p.id})" class="text-slate-400 hover:text-red-500 transition-colors p-1 bg-white rounded-md shadow-sm border border-slate-200" title="Delete passage">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
-                        <div class="p-4 flex-1 flex flex-col justify-between">
+                        <div class="p-4 flex-1 flex flex-col justify-between bg-white">
                             <div>
-                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Ensemble Parts</h4>
-                                <ul class="space-y-2 mb-4">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center"><i data-lucide="users" class="w-3 h-3 mr-1"></i> Ensemble</h4>
+                                <ul class="space-y-1.5 mb-4 max-h-40 overflow-y-auto pr-1">
                                     ${partsListHtml}
                                 </ul>
                             </div>
                             <div class="flex space-x-2 pt-4 border-t border-slate-100 mt-auto">
-                                <button onclick="playSavedChord(${p.id}, 'ET')" ${state.isPlaying ? 'disabled' : ''} class="flex-1 flex justify-center items-center py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors text-sm font-medium disabled:opacity-50">
-                                    <i data-lucide="volume-2" class="w-4 h-4 mr-2"></i> Play Pre-Adjust
+                                <button onclick="playSavedChord(${p.id}, 'ET')" ${state.isPlaying ? 'disabled' : ''} class="flex-1 flex justify-center items-center py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors text-xs font-bold uppercase tracking-wide disabled:opacity-50">
+                                    <i data-lucide="volume-2" class="w-3 h-3 mr-1.5 text-amber-500"></i> Equal Temp
                                 </button>
-                                <button onclick="playSavedChord(${p.id}, 'JI')" ${state.isPlaying ? 'disabled' : ''} class="flex-1 flex justify-center items-center py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors text-sm font-medium disabled:opacity-50">
-                                    <i data-lucide="play" class="w-4 h-4 mr-2"></i> Play Adjusted
+                                <button onclick="playSavedChord(${p.id}, 'JI')" ${state.isPlaying ? 'disabled' : ''} class="flex-1 flex justify-center items-center py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors text-xs font-bold uppercase tracking-wide disabled:opacity-50 border border-blue-200">
+                                    <i data-lucide="play" class="w-3 h-3 mr-1.5"></i> Just Intonation
                                 </button>
                             </div>
                         </div>
@@ -657,57 +990,101 @@
             lucide.createIcons();
         }
 
-
-        // --- EVENT HANDLERS (Global for HTML inline onclick) ---
-
+        // --- EVENT HANDLERS ---
         window.setTab = (tabId) => {
+            if (state.activeTab === 'tuner' && tabId !== 'tuner') stopTuner();
+            
             state.activeTab = tabId;
-            document.getElementById('tab-analyzer').classList.toggle('hidden', tabId !== 'analyzer');
-            document.getElementById('tab-analyzer').classList.toggle('block', tabId === 'analyzer');
-            document.getElementById('tab-saved').classList.toggle('hidden', tabId !== 'saved');
-            document.getElementById('tab-saved').classList.toggle('block', tabId === 'saved');
-            document.getElementById('tab-guide').classList.toggle('hidden', tabId !== 'guide');
-            document.getElementById('tab-guide').classList.toggle('block', tabId === 'guide');
+            ['analyzer', 'tuner', 'saved', 'guide'].forEach(id => {
+                const el = document.getElementById(`tab-${id}`);
+                if(el) {
+                    el.classList.toggle('hidden', tabId !== id);
+                    el.classList.toggle('block', tabId === id);
+                }
+            });
             
             renderNav();
             if (tabId === 'saved') renderSavedPassages();
         };
 
-        window.updateState = (key, value) => {
+        window.updateState = (key, value) => state[key] = value;
+        
+        window.toggleAutoDetect = (checked) => {
+            state.autoDetect = checked;
+            if (checked) {
+                autoDetectChord();
+            } else {
+                renderSettings(); // Re-enable selects
+            }
+        };
+
+        window.manualChordOverride = (key, value) => {
             state[key] = value;
+            // Turn off auto-detect if user manually changes chord via select menus
+            state.autoDetect = false;
+            document.getElementById('autoDetectToggle').checked = false;
+            
+            renderSettings();
+            syncTunerSettings();
+            renderAnalysis();
         };
 
         window.addPart = () => {
-            state.parts.push({ id: Date.now(), instrument: "Trombone", note: "Bb", octave: "3" });
-            renderParts();
-            renderAnalysis();
+            if (state.parts.length >= 200) return alert("Maximum of 200 parts reached.");
+            state.parts.push({ id: Date.now(), playerName: "", instrument: "Flute", note: "C", octave: "5" });
+            sortParts(); // Auto sort and auto-detect when adding
         };
 
         window.removePart = (id) => {
             state.parts = state.parts.filter(p => p.id !== id);
+            autoDetectChord();
             renderParts();
             renderAnalysis();
         };
 
         window.updatePart = (id, field, value) => {
             state.parts = state.parts.map(p => p.id === id ? { ...p, [field]: value } : p);
+            
+            // Only re-render analysis if it's name change (to keep input focus on parts UI)
+            if (field === 'playerName') {
+                renderAnalysis();
+                return;
+            }
+            
+            if (field === 'instrument') {
+                sortParts(); 
+            } else {
+                // If note or octave changed, trigger auto-detect
+                if (field === 'note' || field === 'octave') autoDetectChord();
+                renderParts();
+                renderAnalysis();
+            }
+        };
+
+        window.sortParts = () => {
+            state.parts.sort((a, b) => {
+                const orderA = INSTRUMENTS[a.instrument]?.order || 999;
+                const orderB = INSTRUMENTS[b.instrument]?.order || 999;
+                return orderA - orderB;
+            });
+            autoDetectChord(); // Running chord detection after sorting to ensure sync
             renderParts();
             renderAnalysis();
         };
 
         window.savePassage = () => {
-            if (!state.songName) return alert("Please enter a song name to save.");
+            if (!state.songName) return alert("Please enter a song name to save this passage.");
             const newPassage = {
                 id: Date.now(),
                 songName: state.songName,
                 measureNum: state.measureNum,
                 chordRoot: state.chordRoot,
                 chordQuality: state.chordQuality,
-                parts: [...state.parts]
+                parts: JSON.parse(JSON.stringify(state.parts))
             };
             const existing = getSavedPassages();
             localStorage.setItem('savedPassages', JSON.stringify([...existing, newPassage]));
-            alert("Passage saved successfully!");
+            alert("Passage saved to repertoire!");
             renderSavedPassages();
         };
 
@@ -720,16 +1097,13 @@
         window.handlePlayChord = (type) => {
             if (state.isPlaying) return;
             state.isPlaying = true;
-            renderAnalysis(); // disable buttons
+            renderAnalysis();
             
             const analyzedParts = state.parts.map(p => analyzePart(p, state.chordRoot));
             const freqs = analyzedParts.map(p => type === 'ET' ? p.freqET : p.freqJI);
             playFrequencies(freqs);
             
-            setTimeout(() => {
-                state.isPlaying = false;
-                renderAnalysis();
-            }, 3000);
+            setTimeout(() => { state.isPlaying = false; renderAnalysis(); }, 3000);
         };
 
         window.handlePlayInterval = (partId, type) => {
@@ -746,16 +1120,13 @@
             
             playFrequencies([rootFreq, targetFreq]);
             
-            setTimeout(() => {
-                state.isPlaying = false;
-                renderAnalysis();
-            }, 3000);
+            setTimeout(() => { state.isPlaying = false; renderAnalysis(); }, 3000);
         };
 
         window.playSavedChord = (passageId, type) => {
             if (state.isPlaying) return;
             state.isPlaying = true;
-            renderSavedPassages(); // disable buttons
+            renderSavedPassages();
 
             const passage = getSavedPassages().find(p => p.id === passageId);
             if(passage) {
@@ -764,21 +1135,18 @@
                 playFrequencies(freqs);
             }
 
-            setTimeout(() => {
-                state.isPlaying = false;
-                renderSavedPassages();
-            }, 3000);
+            setTimeout(() => { state.isPlaying = false; renderSavedPassages(); }, 3000);
         };
 
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
             renderNav();
             renderSettings();
-            renderParts();
-            renderAnalysis();
+            syncTunerSettings();
+            buildTunerTicks();
+            sortParts(); // Initial render, sort, & auto-detect
             lucide.createIcons();
         });
-
     </script>
 </body>
 </html>
